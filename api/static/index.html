@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPRE-DICOM — Laboratorio</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #2f81f7;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --bad: #f85149;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    gap: 24px;
+  }
+  @media (min-width: 800px) {
+    main { grid-template-columns: 1fr 1fr; }
+    main > * { min-width: 0; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .panel h2 { margin: 0 0 12px; font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .models {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .chip {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .chip.on { color: var(--ok); border-color: var(--ok); }
+  #drop {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    text-align: center;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+  }
+  #drop.drag { border-color: var(--accent); color: var(--accent); }
+  #preview {
+    display: block;
+    margin: 16px auto 0;
+    max-width: 100%;
+    max-height: 320px;
+    border-radius: 8px;
+    background: #000;
+  }
+  button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .result {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .result:last-child { border-bottom: none; }
+  .result .label { color: var(--muted); }
+  .result .prob { font-family: ui-monospace, monospace; font-size: 16px; }
+  .bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .bar > div { height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 0; }
+  #error { color: var(--bad); font-size: 13px; margin-top: 10px; min-height: 18px; }
+  .verdict {
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 14px;
+  }
+  .verdict.ok { background: rgba(63,185,80,.12); color: var(--ok); }
+  .verdict.warn { background: rgba(210,153,34,.12); color: var(--warn); }
+  .verdict.bad { background: rgba(248,81,73,.12); color: var(--bad); }
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    vertical-align: -2px;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>IPRE-DICOM</h1>
+  <span class="sub">Laboratorio de calidad de radiografías</span>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Modelos cargados</h2>
+    <div class="models" id="models"><span class="chip">…</span></div>
+
+    <h2>Subir imagen</h2>
+    <div id="drop">Arrastra una imagen aquí<br>o haz clic para seleccionar</div>
+    <input type="file" id="file" accept="image/*,.dcm" hidden>
+    <img id="preview" alt="">
+    <button id="analyze" disabled>Analizar</button>
+    <div id="error"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Resultados</h2>
+    <div id="results"><div class="empty">Sube una imagen para ver las predicciones</div></div>
+  </section>
+</main>
+
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const preview = document.getElementById('preview');
+const analyzeBtn = document.getElementById('analyze');
+const errorBox = document.getElementById('error');
+const resultsBox = document.getElementById('results');
+const modelsBox = document.getElementById('models');
+
+let file = null;
+
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  drop.classList.remove('drag');
+  if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) setFile(fileInput.files[0]);
+});
+
+function setFile(f) {
+  file = f;
+  drop.textContent = f.name;
+  if (f.type.startsWith('image/')) {
+    preview.src = URL.createObjectURL(f);
+    preview.hidden = false;
+  } else {
+    preview.hidden = true;
+  }
+  analyzeBtn.disabled = false;
+  errorBox.textContent = '';
+  resultsBox.innerHTML = '<div class="empty">Pulsa Analizar</div>';
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!file) return;
+  analyzeBtn.disabled = true;
+  analyzeBtn.innerHTML = '<span class="spinner"></span>Analizando…';
+  errorBox.textContent = '';
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/predict', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Error del servidor');
+    render(data);
+  } catch (err) {
+    errorBox.textContent = err.message;
+  } finally {
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = 'Analizar';
+  }
+});
+
+function render(data) {
+  const entries = Object.entries(data.results || {});
+  if (!entries.length) {
+    resultsBox.innerHTML = '<div class="empty">No hay modelos cargados. Entrena uno primero.</div>';
+    return;
+  }
+  const rows = entries.map(([task, r]) => {
+    const clean = r.clean ?? 0, bad = r[task] ?? 0;
+    const pct = Math.round(bad * 100);
+    return `
+      <div class="result">
+        <span class="label">${task}</span>
+        <span class="prob">${pct}% ${task}</span>
+      </div>
+      <div class="bar"><div style="width:${pct}%"></div></div>`;
+  }).join('');
+
+  const issues = entries.filter(([task, r]) => (r[task] ?? 0) > 0.5).map(([t]) => t);
+  let verdict;
+  if (!issues.length) verdict = '<div class="verdict ok">Imagen limpia ✓</div>';
+  else if (issues.length === entries.length) verdict = `<div class="verdict bad">Problemas: ${issues.join(', ')}</div>`;
+  else verdict = `<div class="verdict warn">Sospecha: ${issues.join(', ')}</div>`;
+
+  const meta = data.dicom
+    ? `<div class="result" style="margin-top:10px"><span class="label">DICOM</span><span class="prob" style="font-size:12px">${metaToString(data.dicom)}</span></div>`
+    : '';
+
+  resultsBox.innerHTML = rows + verdict + meta;
+}
+
+function metaToString(m) {
+  return [m.Modality, m.Rows && m.Columns ? `${m.Rows}×${m.Columns}` : ''].filter(Boolean).join(' · ');
+}
+
+async function refreshModels() {
+  try {
+    const res = await fetch('/health');
+    const data = await res.json();
+    const list = data.models || [];
+    modelsBox.innerHTML = list.length
+      ? list.map(m => `<span class="chip on">${m}</span>`).join('')
+      : '<span class="chip">ninguno</span>';
+  } catch {
+    modelsBox.innerHTML = '<span class="chip">API no disponible</span>';
+  }
+}
+
+refreshModels();
+</script>
+</body>
+</html>

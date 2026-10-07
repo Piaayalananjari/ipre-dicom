@@ -1,0 +1,1244 @@
+IPRE-DICOM
+Arquitectura, entrenamiento y demostración reproducible
+Pía Ayala · Avance técnico · septiembre de 2026
+
+Prototipo local para visualizar imágenes médicas, ejecutar controles técnicos
+y organizar resultados sin afirmar validez clínica.
+
+IPRE-DICOM 1/39
+
+Qué problema intenta resolver
+SITUACIÓN
+
+Las imágenes llegan en formatos, tamaños y
+convenciones diferentes.
+La calidad técnica, la privacidad y la
+clasificación requieren procesos distintos.
+Un experimento necesita trazabilidad para
+poder repetirse y compararse.
+
+OBJETIVO DEL PROTOTIPO
+
+Recibir una imagen, abrirla de forma
+uniforme, calcular indicadores,
+ejecutar checkpoints disponibles y
+devolver un informe estructurado
+mediante una API.
+Uso previsto: investigación y apoyo
+técnico.
+
+IPRE-DICOM 2/39
+
+Qué existía y qué se implementó en este trabajo
+DISPONIBLE AL COMENZAR
+
+IMPLEMENTADO E INTEGRADO
+
+Dos archivos de pesos: best_noise.pt y
+best_rotation.pt.
+
+API FastAPI y visor web.
+
+No se dispone de logs, dataset de origen ni métricas
+verificables de esos pesos.
+
+Métricas, privacidad y anonimización
+experimental.
+
+CheXpert estaba almacenado en Calfuco, pero no
+conectado al código local.
+
+MedMNIST, entrenamiento, W&B y pipeline IU.
+
+Lectores DICOM, raster, NIfTI y NumPy.
+
+Demo reproducible y 26 pruebas automatizadas.
+
+Conclusión metodológica: podemos demostrar integración y funcionamiento, pero no
+rendimiento clínico de los pesos existentes.
+
+IPRE-DICOM 3/39
+
+Estado verificable hoy
+
+PROBADO LOCALMENTE
+
+IMPLEMENTADO, NO
+EJECUTADO
+
+NO REALIZADO
+
+API y visor
+
+Clasificador frontal/lateral
+
+Despliegue en Calfuco
+
+Formatos y métricas
+
+Comparación con ResNet
+
+Validación clínica
+
+Carga de noise/rotation
+
+Registro W&B online
+
+OCR de píxeles
+
+PneumoniaMNIST entrenado
+
+Manifiesto IU
+
+Búsqueda vectorial
+
+27 pruebas
+
+IPRE-DICOM 4/39
+
+Arquitectura del repositorio
+VISOR
+
+API
+
+SERVICIOS
+
+api/static/index.html
+
+api/main.py
+
+image_io.py · quality.py · privacy.py
+
+Carga archivos y muestra
+resultados
+
+Rutas, validación y orquestación
+
+Lectura, métricas y auditoría
+
+MODELOS
+
+FLUJO
+
+ENTRENAMIENTO
+
+medmnist_models.py · MONAI
+
+agent_workflow.py
+
+scripts/train*.py
+
+Carga checkpoints e inferencia
+
+Hallazgos y acciones acotadas
+
+Splits, métricas y checkpoints
+
+IPRE-DICOM 5/39
+
+Secuencia exacta de POST /predict
+
+1. Recibir
+
+2. Detectar
+
+3. Convertir
+
+4. Métricas y
+
+5. Modelos
+
+6. Informe
+
+archivo
+
+formato
+
+a imagen 2D
+
+privacidad
+
+aplicables
+
+JSON
+
+DECISIÓN DE DOMINIO
+
+Los modelos generales solo se ejecutan para raster o DICOM CR/DX. NIfTI y NumPy reciben métricas,
+pero quedan fuera del dominio del clasificador de tórax.
+
+IPRE-DICOM 6/39
+
+Preprocesamiento por formato
+Formato
+
+Operación
+
+Salida para la API
+
+DICOM
+
+PixelData, slope/intercept, ventana, MONOCHROME1
+
+Imagen 2D + metadata resumida
+
+Raster
+
+Primera página y escala de grises
+
+Imagen 2D
+
+NIfTI
+
+Descompresión y cortes centrales
+
+Imagen 2D + shape/voxel spacing
+
+NumPy
+
+allow_pickle=False, cortes centrales, percentiles
+
+Imagen 2D + dtype/shape
+
+MedMNIST NPZ
+
+Dataset completo
+
+Se consulta por endpoints de dataset
+
+IPRE-DICOM 7/39
+
+Contratos de la API
+Endpoint
+
+Responsabilidad
+
+Estado
+
+GET /health
+
+Dispositivo, modelos y datasets
+
+Probado
+
+GET /formats
+
+Capacidades de entrada
+
+Probado
+
+POST /predict
+
+Análisis técnico completo
+
+Probado
+
+POST /anonymize/dicom
+
+Copia DICOM seudonimizada
+
+Probado con
+fixtures
+
+/datasets/medmnist/...
+
+Descarga, catálogo y muestra
+
+Probado con
+dataset real
+
+/predict/medmnist/...
+
+Inferencia MedMNIST
+
+Sin checkpoint
+entrenado
+
+IPRE-DICOM 8/39
+
+Indicadores técnicos sin modelo
+BRILLO
+
+RUIDO ESTIMADO
+
+Promedio de intensidad normalizada.
+
+Mediana de la diferencia respecto de un
+suavizado local.
+
+CONTRASTE
+
+NITIDEZ ESTIMADA
+
+Desviación estándar de intensidad.
+
+Varianza de gradientes horizontales y verticales.
+
+Estos valores permiten comparar entradas. Todavía no tienen umbrales clínicos
+calibrados.
+
+IPRE-DICOM 9/39
+
+Modelos disponibles en la ejecución local
+Tarea
+
+Checkpoint
+
+Salida
+
+Qué sabemos
+
+Ruido
+
+best_noise.pt
+
+clean / noise
+
+Carga y responde
+
+Rotación
+
+best_rotation.pt
+
+clean / rotation
+
+Carga y responde
+
+Vista
+
+best_view.pt
+
+frontal / lateral
+
+No existe aún
+
+PneumoniaMNIST
+
+medmnist_...pt
+
+normal / pneumonia
+
+Entrenado: 1 época
+
+ChestMNIST
+
+medmnist_...pt
+
+14 probabilidades
+
+No existe aún
+
+No contamos con la procedencia ni métricas originales de los dos checkpoints
+existentes.
+
+IPRE-DICOM 10/39
+
+Cómo está diseñado el entrenamiento general
+
+CSV con path,
+
+Split por
+
+DenseNet121
+
+CrossEntropy +
+
+Validación
+
+Guardar mejor
+
+etiqueta y grupo
+
+source_id
+
+2D
+
+Adam + cosine
+LR
+
+por época
+
+ROC-AUC
+
+MÉTRICAS IMPLEMENTADAS
+
+Accuracy, balanced accuracy, F1, ROC-AUC y classification report.
+Estado: código y pruebas de split listos; no se ejecutó un nuevo entrenamiento completo en esta
+etapa.
+
+IPRE-DICOM 11/39
+
+Conceptos básicos del conjunto de datos
+MUESTRA
+
+ETIQUETA
+
+Una imagen individual y su etiqueta. En
+PneumoniaMNIST la etiqueta 0 significa normal y
+la etiqueta 1 indica neumonía.
+
+Respuesta conocida que el modelo intenta
+aprender. Durante el entrenamiento se compara la
+predicción con esta respuesta.
+
+CONJUNTO MAESTRO
+
+CLASE
+
+Colección completa antes de separar el
+experimento. El término técnico habitual es
+dataset; no es una sola imagen de referencia.
+
+Categoría posible de salida. Para
+PneumoniaMNIST existen dos clases: normal y
+neumonía.
+
+La API no aprende al recibir una imagen. Solo aplica un modelo cuyos pesos
+deberían haberse aprendido antes.
+
+IPRE-DICOM 12/39
+
+Separación oficial de PneumoniaMNIST
+Partición
+
+Muestras
+
+% del total
+
+Normal
+
+Neumonía
+
+Uso
+
+Train
+
+4.708
+
+80,4%
+
+1.214
+
+3.494
+
+Ajustar pesos
+
+Validation
+
+524
+
+8,9%
+
+135
+
+389
+
+Elegir modelo
+
+Test
+
+624
+
+10,7%
+
+234
+
+390
+
+Medición final
+
+Total
+
+5.856
+
+100%
+
+1.583
+
+4.273
+
+Dataset maestro
+
+El proyecto usa los splits incluidos por MedMNIST; no vuelve a mezclar estas 5.856 imágenes.
+El desbalance importa: 73,0% del total corresponde a neumonía.
+
+IPRE-DICOM 13/39
+
+Qué ocurre durante una época de entrenamiento
+
+1. Leer un
+
+2. Calcular
+
+3. Comparar
+
+4. Propagar
+
+5. Actualizar
+
+6. Validar
+
+batch
+
+logits
+
+con etiquetas
+
+el error
+
+los pesos
+
+sin aprender
+
+ÉPOCA
+
+Una pasada completa por todas las muestras de train. El script propone 10 épocas por defecto.
+La validación se ejecuta al final de cada época. Sus imágenes no actualizan los pesos.
+Estado real: este ciclo está programado, pero todavía no se ejecutó de principio a fin sobre PneumoniaMNIST.
+
+IPRE-DICOM 14/39
+
+Modelo, pérdida y optimización implementados
+DENSENET121 DE MONAI
+
+BCEWITHLOGITSLOSS
+
+Entrada de un canal en escala de grises.
+
+Compara logits con etiquetas 0/1.
+
+Salida binaria para PneumoniaMNIST.
+
+Penaliza predicciones incorrectas.
+
+Reutiliza características mediante conexiones
+densas.
+
+Permite una o varias etiquetas por imagen.
+
+ACTUALIZACIÓN DE PESOS
+
+REPRODUCIBILIDAD
+
+Adam usa learning rate 0,0001.
+CosineAnnealingLR lo reduce durante las 10
+épocas.
+
+Semilla 42, configuración registrada y checkpoint
+con el mejor ROC-AUC de validación.
+
+IPRE-DICOM 15/39
+
+Train, validación y test cumplen funciones distintas
+Partición
+
+¿Actualiza pesos?
+
+Pregunta que responde
+
+Momento
+
+Train
+
+Sí
+
+¿Qué patrones minimizan el error?
+
+Cada batch
+
+Validation
+
+No
+
+¿Qué época generaliza mejor?
+
+Cada época
+
+Test
+
+No
+
+¿Cómo rinde el modelo elegido?
+
+Una vez al final
+
+Usar test para escoger hiperparámetros contaminaría la evaluación final. El código reserva
+test hasta cargar el mejor checkpoint.
+
+IPRE-DICOM 16/39
+
+Métricas de clasificación y su significado
+Métrica
+
+Qué mide
+
+Cuándo ayuda
+
+Accuracy
+
+% total de aciertos
+
+Clases equilibradas
+
+Balanced accuracy
+
+Promedio del recall por clase
+
+Clases desbalanceadas
+
+F1
+
+Equilibrio entre precisión y recall
+
+Importan falsos positivos y negativos
+
+ROC-AUC
+
+Ordena positivos sobre negativos
+
+Comparar discriminación entre modelos
+
+Matriz de confusión
+
+TP, TN, FP y FN
+
+Entender el tipo de error
+
+IPRE-DICOM 17/39
+
+Probabilidad, accuracy y correlación no son equivalentes
+PROBABILIDAD INDIVIDUAL
+
+ACCURACY DEL CONJUNTO
+
+P(neumonía)=0,80 significa que el modelo asignó
+0,80 a esa clase para una imagen. No afirma 80%
+de aciertos globales.
+
+Porcentaje de muestras clasificadas correctamente
+después de fijar un umbral, normalmente 0,5.
+
+CORRELACIÓN
+
+ROC-AUC
+
+Mide asociación entre variables. Este proyecto no
+usa correlación como métrica principal porque la
+tarea es clasificación.
+
+Resume la discriminación para todos los umbrales.
+0,5 equivale al azar y 1,0 a separación perfecta.
+
+Los porcentajes reales solo podrán reportarse después de entrenar y evaluar el
+checkpoint nuevo.
+
+IPRE-DICOM 18/39
+
+Comparación de modelos considerada
+Modelo
+
+Fortaleza
+
+Costo
+
+Uso en este proyecto
+
+DenseNet121
+
+Buen extractor para radiografías
+
+Medio
+
+Implementado con MONAI
+
+ResNet18/50
+
+Baseline simple y conocido
+
+Bajo/medio
+
+Comparación pendiente
+
+ViT
+
+Contexto global
+
+Alto; necesita más datos
+
+No implementado
+
+CLIP
+
+Embeddings texto-imagen
+
+Alto
+
+Exploración futura
+
+DINO
+
+Embeddings sin etiquetas
+
+Alto
+
+Clustering futuro
+
+kNN
+
+Búsqueda por similitud
+
+Depende del índice
+
+No entrenado
+
+La elección actual es DenseNet121 porque MONAI ya ofrece una implementación médica reproducible y compatible con
+imágenes de un canal.
+IPRE-DICOM 19/39
+
+Qué se hizo y qué falta para comparar modelos
+REALIZADO
+
+PENDIENTE
+
+DenseNet121 entrenada una época.
+
+Completar más épocas en Calfuco.
+
+Splits oficiales de MedMNIST.
+
+Guardar curvas de múltiples épocas.
+
+Checkpoint seleccionado por ROC-AUC.
+
+Repetir con varias semillas.
+
+Evaluación final sobre test.
+
+Entrenar ResNet con el mismo split.
+
+Predicción verificada desde la API.
+
+Comparar AUC, F1, tiempo y memoria.
+
+La corrida inicial ya entrega resultados observados. La comparación entre arquitecturas
+sigue pendiente.
+
+IPRE-DICOM 20/39
+
+Resultados del entrenamiento real
+Medición
+
+Validación
+
+Test
+
+Interpretación
+
+ROC-AUC
+
+0,9912
+
+0,9478
+
+Buena discriminación inicial
+
+F1
+
+0,9398
+
+0,8337
+
+Baja al generalizar
+
+Accuracy
+
+No calculada
+
+0,8542
+
+85,42% de aciertos
+
+Loss de train
+
+0,2315
+
+No aplica
+
+Error de la época 1
+
+DenseNet121, una época, 4.708 train, 524 validación y 624 test. Entrada original 28 x 28
+redimensionada a 64 x 64.
+
+IPRE-DICOM 21/39
+
+Interpretación de los resultados obtenidos
+LO QUE INDICAN
+
+LO QUE NO DEMUESTRAN
+
+ROC-AUC de test 0,9478: el ranking entre clases es
+prometedor.
+
+No validan uso clínico.
+
+F1 de test 0,8337: precisión y recall todavía tienen
+errores.
+
+Una sola semilla no mide variabilidad.
+
+Accuracy 85,42%: 533 de 624 decisiones serían
+correctas con umbral 0,5.
+
+Una época no prueba convergencia.
+
+No existe aún comparación experimental con
+ResNet.
+
+El ROC-AUC bajó 0,0434 entre validación y test. La diferencia justifica evaluar siempre
+en datos separados.
+
+IPRE-DICOM 22/39
+
+Por qué se usa source_id
+
+SPLIT INCORRECTO
+
+SPLIT AGRUPADO
+
+Original en train
+
+Todas las variantes de una fuente
+quedan juntas
+
+Copia ruidosa de la misma imagen en
+validación
+
+Train y validación contienen fuentes
+diferentes
+
+Resultado optimista por fuga
+
+Evaluación más honesta
+
+GroupShuffleSplit usa source_id, paciente o estudio como unidad de separación.
+
+IPRE-DICOM 23/39
+
+Integración real de PneumoniaMNIST
+DATASET INSTALADO
+
+ENDPOINT PROBADO
+
+Archivo: data/medmnist/pneumoniamnist.npz
+
+Split: test
+
+Fuente oficial: Zenodo
+
+Índice: 0
+
+MD5 verificado: 28209eda62fecd6e6a2d98b1501bb15f
+
+Respuesta HTTP: 200
+
+Tamaño disponible: 28 x 28
+
+Muestras del test: 624
+Etiqueta devuelta: [1]
+Contenido: image/png
+
+El explorador web mostró: “Muestra 0 de 624 · etiquetas [1]”.
+
+IPRE-DICOM 24/39
+
+Qué significa MedMNIST dentro del proyecto
+SÍ SE USA PARA
+
+NO RESUELVE
+
+Probar descarga y catálogo de datasets.
+
+Lectura de metadata DICOM.
+
+Visualizar muestras de splits oficiales.
+
+Anonimización de pacientes.
+
+Implementar un entrenador binario y multietiqueta.
+
+Validación del modelo de ruido existente.
+
+Definir el formato de checkpoints e inferencia.
+
+Entrenamiento frontal/lateral.
+
+El checkpoint PneumoniaMNIST ya está cargado: /predict/medmnist devuelve
+probabilidades normal y pneumonia.
+
+IPRE-DICOM 25/39
+
+Casos preparados para la demostración
+
+Original
+
+Rotada
+
+Ruidosa
+
+PneumoniaMNIST test #0
+
+25 grados
+
+Ruido gaussiano sigma 35
+
+Además se generó un volumen NPY artificial para comprobar lectura 3D y exclusión de modelos fuera de
+dominio.
+IPRE-DICOM 26/39
+
+Resultados reales de POST /predict
+Caso
+
+Ruido estimado
+
+P(noise)
+
+P(rotation)
+
+¿Modelos?
+
+Original
+
+0.0000
+
+0.9465
+
+0.4261
+
+Sí
+
+Rotada 25°
+
+0.0000
+
+0.9492
+
+0.4278
+
+Sí
+
+Ruidosa
+
+0.0588
+
+0.9943
+
+0.4699
+
+Sí
+
+Volumen NPY
+
+0.0000
+
+-
+
+-
+
+No
+
+Ejecución local en CPU con los checkpoints presentes en models/.
+
+IPRE-DICOM 27/39
+
+Hallazgos de la demostración
+FUNCIONÓ
+Los cuatro archivos recibieron HTTP 200.
+El ruido determinista distinguió la variante ruidosa:
+0.0588 frente a 0.0000.
+NPY quedó fuera del dominio de los modelos, como
+estaba diseñado.
+El informe LangGraph se produjo de manera
+reproducible.
+
+PROBLEMAS ENCONTRADOS
+P(noise) fue 0.9465 incluso en la original: alto
+falso positivo.
+La rotada quedó bajo el umbral 0.5: el modelo no
+detectó el caso.
+No se pueden inferir métricas globales con tres
+imágenes.
+Los pesos requieren procedencia, dataset y
+validación.
+
+IPRE-DICOM 28/39
+
+Conclusión del experimento local
+
+La infraestructura funciona
+La API abre los formatos, ejecuta los módulos, aplica reglas de dominio y devuelve
+resultados estructurados.
+
+Los modelos aún no son confiables
+La demo evidencia falsos positivos de ruido y baja sensibilidad a la rotación. El
+siguiente trabajo debe centrarse en datos, etiquetas y evaluación.
+
+IPRE-DICOM 29/39
+
+Privacidad y anonimización DICOM
+AUDITORÍA
+
+EXPORTACIÓN EXPERIMENTAL
+
+Busca campos como PatientName, PatientID e
+InstitutionName.
+
+Elimina tags privados.
+
+Devuelve nombres de campos, nunca sus valores.
+
+Remapea UIDs con HMAC estable.
+
+Evalúa BurnedInAnnotation y exige revisión de
+píxeles.
+
+No modifica PixelData.
+
+Vacía identificadores directos conocidos.
+
+Sin OCR ni redacción de píxeles. No equivale a certificación DICOM PS3.15.
+
+IPRE-DICOM 30/39
+
+Flujo agente: qué hace y qué no hace
+ENTRADA
+
+SALIDA
+
+Probabilidades ya calculadas
+
+Estado ok o review
+
+Conteo de identificadores
+
+Hallazgos estructurados
+
+Bandera de revisión de píxeles
+
+Acciones recomendadas
+Aviso no diagnóstico
+
+LangGraph solo orquesta una función determinista. No usa un LLM, no clasifica
+imágenes y no toma decisiones clínicas.
+
+IPRE-DICOM 31/39
+
+Pruebas automatizadas
+
+27
+
+COBERTURA PRINCIPAL
+Formatos y extensiones
+Privacidad y anonimización
+
+pruebas aprobadas
+
+MedMNIST y métricas
+Split agrupado
+Manifiesto IU
+
+0
+
+Endpoints HTTP
+Flujo agente
+
+fallos actuales
+
+Comando: python -m unittest discover -s tests -v
+
+IPRE-DICOM 32/39
+
+Entrenamiento MedMNIST ejecutado
+CONFIGURACIÓN
+
+EVALUACIÓN
+
+PneumoniaMNIST o ChestMNIST
+
+ROC-AUC macro
+
+Tamaños 28, 64, 128 o 224
+
+F1 macro
+
+DenseNet121 con un canal
+
+Exactitud por etiqueta
+
+BCEWithLogitsLoss
+
+Selección por validación
+
+Adam y cosine scheduler
+
+Evaluación final en test
+
+Corrida inicial: 1 época, ROC-AUC test 0,9478, F1 test 0,8337 y accuracy test 0,8542.
+
+IPRE-DICOM 33/39
+
+W&B: qué se preparó
+REGISTRO POR ÉPOCA
+
+TRAZABILIDAD
+
+Pérdida
+
+Hiperparámetros
+
+Learning rate
+
+Semilla y dispositivo
+
+Accuracy y balanced accuracy
+
+Método de split
+
+F1 y ROC-AUC
+
+Mejor checkpoint como artefacto
+Modo online u offline
+
+La corrida inicial guardó métricas y checkpoint local. W&B sigue probado solo mediante
+un smoke test offline.
+
+IPRE-DICOM 34/39
+
+Pipeline frontal/lateral con IU Chest X-Ray
+
+indiana_
+
+Normalizar
+
+Buscar
+
+Manifest con
+
+Entrenar
+
+best_view.pt
+
+projections.csv
+
+PA/AP/LAT
+
+imágenes
+
+source_id
+
+task=view
+
+en la API
+
+La vista lateral es una categoría válida, no una alerta de mala calidad.
+Estado: generador de manifiesto y entrenamiento listos; dataset y entrenamiento todavía
+pendientes.
+
+IPRE-DICOM 35/39
+
+Calfuco: recursos inspeccionados, despliegue pendiente
+OBSERVADO POR SSH
+
+BLOQUEOS
+
+RTX 3090 de 24 GB y dos RTX 2080 Ti
+
+Sin permiso en /mnt/workspace/pfayala
+
+125 GB de RAM
+
+Sin acceso al daemon Docker
+
+/mnt/data para datasets
+
+Falta entorno Python moderno
+
+/mnt/workspace para entrenamiento
+
+Proyecto aún no copiado ni ejecutado
+
+Python del sistema 3.6.9
+
+Estado correcto para presentar: plan documentado, no despliegue realizado.
+
+IPRE-DICOM 36/39
+
+Cómo ejecutar la demostración
+TERMINAL 1
+
+TERMINAL 2
+
+source .venv/bin/activate
+
+python scripts/run_demo.py
+
+MEDMNIST_ROOT=data/medmnist python -m uvicorn
+api.main:app --host 127.0.0.1 --port 8000
+
+Guarda demo_assets/demo_results.json
+
+NAVEGADOR
+Abrir http://127.0.0.1:8000
+Cargar original, rotada y ruidosa
+En MedMNIST: PneumoniaMNIST / test / 28 / índice 0
+
+IPRE-DICOM 37/39
+
+Guion de la demo en vivo
+
+1
+
+Abrir /health
+
+2
+
+Mostrar CPU y modelos rotation/noise.
+
+3
+
+Imagen original
+
+Mostrar test #0 de 624, etiqueta [1].
+
+4
+
+Explicar métricas y falso positivo de ruido.
+
+5
+
+Imagen ruidosa
+Comparar noise_estimate 0.0588 y P(noise) 0.9943.
+
+Explorador MedMNIST
+
+Imagen rotada
+Mostrar que el modelo no cruza 0.5.
+
+6
+
+Volumen NPY
+Mostrar lectura y exclusión de modelos.
+
+IPRE-DICOM 38/39
+
+Conclusión
+Se implementó y probó una plataforma local modular.
+La demostración confirmó formatos, reglas de dominio, MedMNIST y respuestas estructuradas.
+El nuevo modelo PneumoniaMNIST alcanzó ROC-AUC 0,9478 y accuracy 85,42% en test
+tras una época.
+Siguiente hito: completar más épocas y comparar DenseNet121 con ResNet usando exactamente
+los mismos splits.
+
+Preguntas
+IPRE-DICOM 39/39
+
+

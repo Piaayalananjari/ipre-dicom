@@ -1,0 +1,4 @@
+# Optional LangGraph orchestration layer. The core API does not require an LLM.
+-r requirements.txt
+langgraph>=0.6,<0.7; python_version < "3.10"
+langgraph>=1.0,<2; python_version >= "3.10"

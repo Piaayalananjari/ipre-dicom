@@ -48,7 +48,7 @@ def main():
         img = Image.open(f).convert("L").resize((args.size, args.size))
         clean_path = clean_dir / f.name
         img.save(clean_path)
-        rows.append({"path": clean_path, "noise_label": 0})
+        rows.append({"path": clean_path, "source_id": f.stem, "noise_label": 0})
 
         for v in range(args.variants):
             rng = np.random.default_rng(RANDOM_SEED * 1000 + i * args.variants + v)
@@ -56,18 +56,18 @@ def main():
             noisy = apply_noise(img, rng, sigma, blur=rng.random() < 0.5)
             noisy_path = noisy_dir / f"{f.stem}_noisy_{v:03d}.png"
             noisy.save(noisy_path)
-            rows.append({"path": noisy_path, "noise_label": 1})
+            rows.append({"path": noisy_path, "source_id": f.stem, "noise_label": 1})
 
             if v < args.variants // 2:
                 clean_var = ImageEnhance.Brightness(img).enhance(rng.uniform(0.85, 1.15))
                 clean_var = ImageEnhance.Contrast(clean_var).enhance(rng.uniform(0.9, 1.1))
                 clean_var_path = clean_dir / f"{f.stem}_clean_{v:03d}.png"
                 clean_var.save(clean_var_path)
-                rows.append({"path": clean_var_path, "noise_label": 0})
+                rows.append({"path": clean_var_path, "source_id": f.stem, "noise_label": 0})
 
     csv_path = out_dir / "labels_noise.csv"
     with open(csv_path, "w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["path", "noise_label"])
+        writer = csv.DictWriter(fh, fieldnames=["path", "source_id", "noise_label"])
         writer.writeheader()
         writer.writerows(rows)
 

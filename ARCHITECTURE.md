@@ -253,7 +253,7 @@ Se entrenó con **12 imágenes** (4 limpias, 4 rotadas, 4 ruidosas) durante 2 é
 ```bash
 .venv/bin/python scripts/train.py \
   --csv /tmp/ipre_noise/out/labels_noise.csv \
-  --task noise \      # rotation | noise
+  --task noise \      # rotation | noise | view
   --epochs 15 \
   --batch-size 32
 ```
@@ -265,6 +265,11 @@ Qué hace `train.py`:
 4. Modelo `DenseNet121` 2D, pérdida `CrossEntropyLoss`, optimizador `Adam` (lr 1e-4), `CosineAnnealingLR`.
 5. Por época: entrena, evalúa en validación (accuracy, F1, AUC).
 6. Guarda el mejor modelo por AUC en `models/best_<task>.pt`.
+
+Para `view`, `scripts/build_iu_manifest.py` convierte la tabla de proyecciones de IU
+Chest X-Ray en etiquetas frontal/lateral y usa el estudio como `source_id`, evitando
+que vistas del mismo estudio crucen entre entrenamiento y validación. La API presenta
+esta salida como clasificación de vista, separada de las alertas de calidad.
 
 ### 5.3 Entrenar con datos reales (CheXpert Plus)
 
@@ -279,6 +284,33 @@ El proyecto tiene `chexpert_plus.json` (metadatos del dataset Stanford/AIMI via 
 | GET    | `/`         | Interfaz web                                      |
 | GET    | `/health`   | Estado de la API y modelos cargados               |
 | POST   | `/predict`  | Subir imagen (`file`), devuelve probabilidades por tarea |
+| GET    | `/datasets/medmnist` | Catálogo MedMNIST y tamaños locales |
+| POST   | `/datasets/medmnist/{id}/download` | Descarga explícita de un dataset/tamaño |
+| GET    | `/datasets/medmnist/{id}/sample` | Muestra PNG de un split e índice |
+| GET    | `/formats` | Formatos soportados y límite de carga |
+| POST   | `/predict/medmnist/{id}` | Inferencia con checkpoint MedMNIST entrenado |
+| POST   | `/anonymize/dicom` | Desidentificación experimental; rechaza riesgo de texto incrustado |
+
+### 6.1. Análisis técnico y privacidad
+
+`POST /predict` devuelve además:
+
+- indicadores descriptivos de brillo, contraste, ruido y nitidez;
+- auditoría de campos DICOM potencialmente identificadores, sin devolver sus valores;
+- advertencia de revisión OCR para texto incrustado en píxeles;
+- informe estructurado de acciones recomendadas.
+
+La auditoría no certifica anonimización. Un flujo clínico requiere un perfil formal de
+desidentificación DICOM, revisión de UIDs y OCR/pixel redaction.
+
+### 6.2. MedMNIST y agentes
+
+MedMNIST se carga bajo demanda desde `MEDMNIST_ROOT`; nunca se descarga al arrancar la
+API. Se integran inicialmente ChestMNIST y PneumoniaMNIST en tamaños 28, 64, 128 y 224.
+
+El informe técnico se modela como una herramienta determinista. Cuando LangGraph está
+instalado se ejecuta dentro de un grafo acotado; sin LangGraph usa el mismo código como
+fallback. Un LLM no participa en las predicciones y no recibe valores PHI.
 
 ---
 

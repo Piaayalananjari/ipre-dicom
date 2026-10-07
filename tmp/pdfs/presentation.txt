@@ -1,0 +1,287 @@
+IPRE-DICOM
+API experimental para análisis técnico de imágenes médicas
+Pía Ayala · Avance de proyecto · septiembre de 2026
+
+Formatos médicos, control técnico, privacidad e inferencia
+reproducible
+
+IPRE-DICOM 1/11
+
+Problema y objetivo
+PROBLEMA
+Las imágenes provienen de fuentes,
+formatos y tamaños distintos. Antes de
+entrenar se necesita un flujo uniforme,
+trazable y seguro.
+
+PREGUNTA
+¿Cómo recibir una imagen, inspeccionarla y
+ejecutar modelos sin mezclar lectura,
+privacidad e inferencia?
+
+OBJETIVO DEL PROTOTIPO
+
+Construir una API modular que abra
+imágenes médicas, calcule
+indicadores técnicos, audite
+metadata DICOM y ejecute
+clasificadores disponibles.
+Alcance: investigación y apoyo
+técnico, sin diagnóstico clínico.
+
+IPRE-DICOM 2/11
+
+Flujo de una imagen dentro de la API
+
+Archivo
+
+Lector según
+
+Imagen 2D
+
+subido
+
+formato
+
+normalizada
+
+Análisis
+técnico
+y modelos
+
+JSON e
+interfaz web
+
+1
+
+2
+
+3
+
+FastAPI recibe el archivo
+mediante /predict.
+
+Cada módulo entrega resultados
+independientes.
+
+La interfaz presenta el mismo
+contrato JSON.
+
+IPRE-DICOM 3/11
+
+Capacidades implementadas
+ENTRADA Y ANÁLISIS
+
+DATOS Y EXPERIMENTACIÓN
+
+DICOM, raster, NIfTI y NumPy
+
+ChestMNIST y PneumoniaMNIST
+
+Brillo, contraste, ruido y nitidez
+
+Manifiesto para IU Chest X-Ray
+
+Corte central para volúmenes
+
+Splits por paciente o estudio
+Métricas y artefactos en W&B
+
+MODELOS
+DenseNet121 de MONAI
+Ruido y rotación operativos
+Frontal/lateral preparado
+
+SEGURIDAD
+Auditoría DICOM
+Seudonimización experimental
+LangGraph determinista opcional
+
+IPRE-DICOM 4/11
+
+Demostración con cambios controlados
+
+Original
+
+Rotada
+
+Ruidosa
+
+Muestra pública de PneumoniaMNIST
+
+Alteración controlada de 25 grados
+
+Ruido gaussiano reproducible
+
+La demo compara indicadores deterministas y predicciones aprendidas sin usar datos identificables.
+IPRE-DICOM 5/11
+
+Modelos y etiquetas
+Tarea
+
+Clase 0
+
+Clase 1
+
+Estado
+
+Ruido
+
+clean
+
+noise
+
+Checkpoint disponible
+
+Rotación
+
+clean
+
+rotation
+
+Checkpoint disponible
+
+Vista
+
+frontal
+
+lateral
+
+Falta entrenar
+
+PneumoniaMNIST
+
+normal
+
+pneumonia
+
+Pipeline listo
+
+ChestMNIST
+
+14 hallazgos
+
+multietiqueta
+
+Pipeline listo
+
+La API funciona de extremo a extremo. Cada modelo aún requiere validación externa.
+
+IPRE-DICOM 6/11
+
+Privacidad DICOM
+AUDITORÍA
+
+EXPORTACIÓN EXPERIMENTAL
+
+Detecta campos sensibles
+
+Elimina tags privados
+
+No devuelve sus valores
+
+Vacía identificadores conocidos
+
+Revisa BurnedInAnnotation
+
+Remapea UIDs con HMAC
+
+Solicita revisión OCR
+
+Conserva PixelData
+
+Límite actual: no hay OCR ni redacción de píxeles. Se requiere validación
+institucional.
+
+IPRE-DICOM 7/11
+
+Validación y reproducibilidad
+
+26
+pruebas automatizadas aprobadas
+
+LA SUITE COMPRUEBA
+Lectura y normalización
+Privacidad DICOM
+Servicios MedMNIST
+Separación por fuente
+
+4
+
+Endpoints HTTP
+
+familias de formatos principales
+W&B registra configuración, pérdida,
+ROC-AUC, F1 y el mejor checkpoint.
+
+IPRE-DICOM 8/11
+
+Estado actual del proyecto
+DISPONIBLE AHORA
+
+TRABAJO PENDIENTE
+
+API y visor ejecutables
+
+Entrenar vista con IU
+
+Soporte multiformato
+
+Validar por paciente
+
+Ruido y rotación integrados
+
+Calibrar probabilidades
+
+MedMNIST, W&B y LangGraph
+
+Añadir OCR
+
+Auditoría DICOM
+
+Incorporar autenticación
+
+Manual, demo y pruebas
+
+Evaluar búsqueda por similitud
+
+IPRE-DICOM 9/11
+
+Próximo experimento
+DATASET
+
+EVALUACIÓN
+
+IU Chest X-Ray para clasificar vista frontal
+o lateral.
+
+ROC-AUC, F1, balanced accuracy y
+matriz de confusión.
+
+DISEÑO
+
+ENTREGA
+
+Separación por source_id para mantener
+cada estudio en una sola partición.
+
+best_view.pt integrado automáticamente
+en /predict.
+
+Objetivo inmediato: validar el flujo con datos reales y revisión humana de
+errores.
+
+IPRE-DICOM 10/11
+
+Una plataforma funcional, con modelos aún en
+etapa de validación
+La infraestructura ya separa formatos, calidad técnica, privacidad, inferencia y
+experimentación.
+
+Demostración en vivo
+/health · visor web · original · rotación · ruido · Swagger
+
+Preguntas
+IPRE-DICOM 11/11
+
+

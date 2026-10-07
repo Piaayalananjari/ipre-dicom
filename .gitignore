@@ -1,4 +1,9 @@
+data/medmnist/
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
 .DS_Store
+wandb/
+.wandb/
+.ipynb_checkpoints/
+demo_assets/

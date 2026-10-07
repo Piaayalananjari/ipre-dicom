@@ -1,0 +1,368 @@
+       Frameworks de orquestación para agentes de IA
+Comparación de paradigmas basados en grafos y alternativas no basadas en grafos
+
+
+
+
+                                 Agosto 2026
+
+
+
+
+                                                                                  1 / 20
+Objetivo del análisis
+
+
+Pregunta central
+¿Qué framework permite construir agentes con control explícito del flujo, estado, ciclos,
+human-in-the-loop y trazabilidad, sin perder compatibilidad con múltiples LLM y herramientas
+externas?
+
+
+Criterios funcionales                             Criterios de producción
+  ▶ Paradigma de orquestación                       ▶ Licencia y costos
+  ▶ Estado y persistencia                           ▶ Lenguajes y proveedores LLM
+  ▶ Ciclos y ramificaciones                         ▶ Observabilidad y debugging
+  ▶ Multiagente y memoria                           ▶ Despliegue
+  ▶ Integración MCP                                 ▶ Madurez y comunidad
+
+
+
+                                                                                               2 / 20
+Mapa de frameworks analizados
+
+                                                 Frameworks de agentes
+
+
+
+     Basados en grafos                                                                           No basados
+
+
+
+        LangGraph                                                                                      Crew
+   LlamaIndex Workflows                                                                            AutoGen
+     Haystack Pipelines                                                                          OpenAI Ag
+                                                                                                    Pydan
+                                                                                                     smola
+
+
+ El requisito principal favorece los frameworks donde el flujo es representable y auditable como grafo o
+                                          red explícita de pasos.
+
+                                                                                                       3 / 20
+LangGraph — modelo de orquestación
+
+
+                                                                              Estado
+Paradigma
+StateGraph: grafo dirigido con estado explícito y                             Router
+tipado.                                                            retry
+                                                                      cond.            cond.
+
+  ▶ Nodos: funciones que leen y actualizan estado.                Nodo A                Nodo B
+
+  ▶ Aristas normales y condicionales.
+  ▶ Reducers para fusionar actualizaciones.                                   END
+
+  ▶ Ciclos, fan-out/fan-in y subgrafos.
+  ▶ Command y Send para control dinámico.
+Ajuste al requisito de grafos: Sí — es el más completo del grupo analizado.
+
+
+
+                                                                                                 4 / 20
+LangGraph — capacidades de producción
+
+Estado, memoria y control                             Ecosistema
+  ▶ Checkpointers: memoria corta + reanudación.        ▶ Python + JavaScript/TypeScript.
+  ▶ Store: memoria de largo plazo.                     ▶ 40+ proveedores LLM; OpenRouter
+  ▶ interrupt: human-in-the-loop con                      compatible.
+     pausa/reanudación.                                ▶ MCP mediante
+  ▶ Time travel y replay desde checkpoints.               langchain-mcp-adapters.
+  ▶ Durable execution en LangGraph Platform.           ▶ LangSmith + OpenTelemetry.
+                                                       ▶ Self-hosted, LangGraph Platform y AWS
+                                                          AgentCore.
+
+Balance
+Ventaja: máximo control, trazabilidad y madurez para flujos complejos.   Costo: mayor curva de
+aprendizaje y más boilerplate que alternativas simples.
+
+
+                                                                                                 5 / 20
+LlamaIndex Workflows
+
+Paradigma
+Motor event-driven: los pasos reciben eventos y emiten nuevos eventos. La topología funciona como un
+grafo implícito.
+
+Fortalezas                                           Limitaciones frente a LangGraph
+  ▶ Excelente integración con RAG y                    ▶ Topología distribuida entre eventos y
+     documentos.                                          decoradores.
+  ▶ Paralelismo asíncrono natural.                     ▶ Estado compartido menos estructurado.
+  ▶ Python; proveedores LLM agnósticos.                ▶ HITL más manual.
+  ▶ MCP, FunctionTool y OpenAPI.                       ▶ Sin equivalente completo de time
+  ▶ LlamaDeploy y observabilidad con                      travel/checkpoint tree.
+     Phoenix/LlamaTrace.                               ▶ TypeScript menos maduro.
+Ajuste al requisito de grafos: Parcial — control y ciclos sí; auditabilidad y replay son más débiles.
+
+                                                                                                        6 / 20
+Haystack Pipelines
+
+
+Paradigma
+Pipeline como grafo dirigido de componentes: entradas/salidas tipadas, ramificación condicional y
+ciclos limitados.
+
+Fortalezas                                         Limitaciones
+  ▶ Grafo explícito y simple.                        ▶ Python-only.
+  ▶ Definición en Python o YAML.                     ▶ Multiagente limitado.
+  ▶ Muy sólido para RAG/extracción.                  ▶ HITL básico.
+  ▶ Apache-2.0.                                      ▶ Sin checkpointing completo del grafo.
+  ▶ OpenTelemetry y despliegue con                   ▶ Menor sofisticación de memoria/estado.
+     Hayhooks/deepset Cloud.
+Ajuste al requisito de grafos: Sí en estructura; Parcial en persistencia/HITL/replay.
+
+
+                                                                                                    7 / 20
+Comparación — frameworks basados en grafos
+
+
+
+ Criterio                 LangGraph   LlamaIndex   Haystack   Lectura principal
+ Grafo explícito             Sí        Parcial        Sí      LangGraph/Haystack son más audita-
+                                                              bles
+ Estado tipado               Sí        Parcial     Parcial    LangGraph ofrece mayor control
+ Ciclos / condicionales      Sí          Sí          Sí       Los tres los soportan
+ HITL                        Sí        Parcial     Parcial    LangGraph tiene la mejor ergonomía
+ Checkpoint / replay         Sí         No          No        Diferenciador fuerte de LangGraph
+ Multiagente                Alto       Medio        Bajo      Subgrafos y patrones oficiales favore-
+                                                              cen LangGraph
+ RAG / documentos           Alto       Muy alto    Muy alto   LlamaIndex/Haystack destacan en da-
+                                                              tos no estructurados
+ MCP                         Sí           Sí          Sí      Compatible en los tres
+
+
+
+
+                                                                                                   8 / 20
+Frameworks no basados en grafos
+
+
+Idea común
+El flujo se modela mediante roles, conversaciones, handoffs, código imperativo o un bucle
+ReAct/CodeAct; por ello, el control del camino de ejecución suele ser menos explícito.
+
+  ▶ CrewAI: roles/equipos y procesos.
+  ▶ AutoGen / AG2: conversación y actores dirigidos por eventos.
+  ▶ OpenAI Agents SDK: bucle de agente + handoffs.
+  ▶ Pydantic AI: Python tipado + grafo opcional.
+  ▶ smolagents: bucle ReAct/CodeAct minimalista.
+Son alternativas útiles cuando el grafo explícito sería sobre-ingeniería o el objetivo principal es rapidez
+de prototipado.
+
+
+
+                                                                                                              9 / 20
+CrewAI
+
+
+Paradigma
+Roles/equipos: agentes con rol, objetivo y backstory ejecutan tareas bajo procesos secuenciales,
+jerárquicos o concurrentes.
+
+Fortalezas                                           Limitaciones
+  ▶ Multiagente es su especialidad.                   ▶ Menor control determinista del flujo.
+  ▶ Curva de aprendizaje corta.                       ▶ Estado/ciclos/HITL finos son limitados.
+  ▶ Memoria integrada.                                ▶ Python-only.
+  ▶ 100+ proveedores vía LiteLLM.                     ▶ Flows agrega control event-driven, pero no
+  ▶ MCP e integraciones de observabilidad.             reemplaza un grafo persistente.
+Ajuste al requisito central: Parcial — excelente para equipos de agentes, no para un grafo auditable
+de primer nivel.
+
+
+                                                                                                     10 / 20
+Microsoft AutoGen / AG2
+
+
+Paradigma
+Conversacional / actores event-driven: el flujo emerge del intercambio de mensajes entre agentes.
+
+Fortalezas                                         Limitaciones
+  ▶ Multiagente conversacional muy flexible.         ▶ Flujo poco determinista.
+  ▶ Group chat, nested chat, swarm.                  ▶ Sin grafo persistido con pausa/reanudación.
+  ▶ Fuerte legado académico y experimental.          ▶ MCP y observabilidad menos uniformes.
+   ▶ Python y opciones .NET/C#.                     ▶ Fragmentación AutoGen 0.4 vs. AG2.
+Ajuste al requisito central: No — útil para problemas abiertos, menos apropiado para procesos
+regulados/auditables.
+
+
+
+
+                                                                                                    11 / 20
+OpenAI Agents SDK
+
+
+Paradigma
+Agentes planos con handoffs: cada agente ejecuta un bucle propio y puede transferir control a otro.
+
+Fortalezas                                          Limitaciones
+  ▶ API mínima y fácil de aprender.                   ▶ Sin grafo explícito.
+  ▶ Tracing integrado por defecto.                    ▶ Estado compartido complejo debe construirse
+  ▶ Guardrails y sessions.                               a mano.
+  ▶ Python + TypeScript.                              ▶ HITL con pausa/reanudación no es nativo.
+
+  ▶ MCP de primera clase.                             ▶ Mejor experiencia dentro del ecosistema
+                                                      OpenAI.
+Ajuste al requisito central: No — muy atractivo para prototipos y productos OpenAI-first.
+
+
+
+                                                                                                      12 / 20
+Pydantic AI
+
+
+Paradigma
+Código Python imperativo y tipado, con Pydantic Graph como opción para construir grafos con
+estado.
+
+Fortalezas                                         Limitaciones
+  ▶ Type-safety y outputs estructurados.             ▶ Orquestación avanzada más manual.
+  ▶ Inyección de dependencias con RunContext.        ▶ HITL menos pulido que LangGraph.
+  ▶ Multi-proveedor real, incluyendo                 ▶ Python-only.
+     OpenRouter.                                     ▶ Ecosistema y patrones multiagente más
+  ▶ MCP nativo y OpenTelemetry/Logfire.                 pequeños.
+  ▶ MIT.
+Ajuste al requisito central: Parcial — el soporte de grafo existe, pero es opt-in y menos maduro.
+
+
+                                                                                                    13 / 20
+smolagents
+
+
+Paradigma
+Bucle ReAct / CodeAct secuencial: el agente razona, genera una acción —a menudo código
+Python—, observa el resultado y repite.
+
+Fortalezas                                          Limitaciones
+  ▶ Librería mínima y legible.                        ▶ Sin grafo ni checkpointing.
+  ▶ Muy buena para aprendizaje y prototipos.          ▶ HITL no nativo.
+  ▶ Multi-proveedor vía                               ▶ Multiagente limitado a jerarquía simple.
+     LiteLLM/OpenAI-compatible.                       ▶ CodeAgent exige sandbox seguro.
+  ▶ MCP y ecosistema Hugging Face.
+  ▶ Apache-2.0.
+Ajuste al requisito central: No — destaca por simplicidad, no por control del flujo.
+
+
+                                                                                                   14 / 20
+Comparación — frameworks no basados en grafos
+
+
+
+
+ Criterio              CrewAI     AutoGen/AG2        OpenAI SDK    Pydantic AI   smolagents
+ Grafo explícito         No             No               No         Opcional         No
+ Multiagente           Muy alto      Muy alto           Medio        Medio       Bajo/medio
+ Estado persistente     Medio       Bajo/medio          Medio        Medio          Bajo
+ HITL                   Parcial   Conversacional       Externo      Manual           No
+ MCP                      Sí      Parcial/reciente       Sí            Sí            Sí
+ Lenguajes             Python      Python/.NET         Py/TS        Python         Python
+ Principal fortaleza    Roles      Conversación      Simplicidad     Tipado      Minimalismo
+
+
+
+
+                                                                                               15 / 20
+Licencias, lenguajes y proveedores
+
+
+
+ Framework                Licencia OSS                 Lenguajes principales    Compatibilidad de modelos
+ LangGraph                MIT                          Python, JS/TS            Agnóstico; OpenRouter compatible
+ LlamaIndex               MIT                          Python                   Agnóstico; OpenRouter compatible
+ Haystack                 Apache-2.0                   Python                   Agnóstico; OpenRouter compatible
+ CrewAI                   MIT                          Python                   LiteLLM; 100+ proveedores
+ AutoGen                  MIT / AG2 Apache-2.0         Python, .NET             OpenAI-compatible y varios vendors
+ OpenAI Agents SDK        MIT                          Python, TS               OpenAI-first, otros vía compatibilidad
+ Pydantic AI              MIT                          Python                   Multi-proveedor de primera clase
+ smolagents               Apache-2.0                   Python                   HF, LiteLLM y endpoints compatibles
+
+ Conclusión transversal: el costo de licencia de la librería no es el factor diferenciador; pesan más la operación, observabilidad, servicios
+                                                      gestionados y consumo de LLM.
+
+
+
+
+                                                                                                                                            16 / 20
+Multiagente, memoria y MCP
+
+
+
+
+Multiagente                     Memoria / estado                      MCP
+Más completos: LangGraph,       LangGraph destaca por combinar        El soporte MCP ya aparece en
+CrewAI y AutoGen/AG2.           estado tipado, checkpoints y Store.   prácticamente todo el grupo.
+Moderados: LlamaIndex, OpenAI   En los demás, la memoria suele        Por sí solo, MCP no discrimina la
+SDK, Pydantic AI.               estar centrada en historial           elección; importa más cómo se
+                                conversacional, contexto o            integra con control de flujo y
+Más limitados: Haystack,
+                                almacenamiento externo.               estado.
+smolagents.
+
+
+
+
+                                                                                                     17 / 20
+Observabilidad, debugging y despliegue
+
+
+
+ Framework     Observabilidad / debugging                  Despliegue
+ LangGraph     LangSmith, OTel, time travel, checkpoints   Self-hosted, Platform, AWS AgentCore
+ LlamaIndex    Phoenix/LlamaTrace, trazas por evento       Self-hosted, LlamaDeploy, AWS
+ Haystack      OTel, trazas por componente                 Hayhooks, Docker/K8s, deepset Cloud
+ CrewAI        Langfuse/LangSmith/OTel, logs por tarea     Self-hosted, Crew Studio/AMP, AWS
+ AutoGen/AG2   OTel y logs de mensajes                     Self-hosted, Studio/Foundry, contenedores
+ OpenAI SDK    Tracing nativo por run/span                 Self-hosted, cloud compatible
+ Pydantic AI   Logfire + OTel + validación tipada          FastAPI/Docker, AWS/GCP/Azure
+ smolagents    Logs de pasos + OTel                        FastAPI/Gradio/HF Spaces; sandbox
+
+
+
+
+                                                                                                       18 / 20
+Ajuste al requisito principal del proyecto
+
+          smolagents                                                LangGraph
+                                CrewAI                   Haystack
+                       OpenAI SDK                 LlamaIndex
+              AutoGen/AG2                  Pydantic AI
+                                                                                Mayor ajuste
+
+
+
+Lectura
+Si el requisito dominante es grafo + estado + ciclos + HITL + trazabilidad, LangGraph
+concentra la cobertura más completa. LlamaIndex y Haystack son alternativas fuertes cuando
+RAG/documentos pesan más; Pydantic AI es una opción intermedia si se prioriza type-safety.
+
+
+
+                                                                                               19 / 20
+Conclusiones
+
+ 1   LangGraph es el framework que mejor satisface el requisito central: grafo explícito, estado tipado,
+     persistencia, HITL, replay y multiagente.
+ 2   LlamaIndex Workflows y Haystack son especialmente competitivos en escenarios RAG y
+     procesamiento documental, con menor sofisticación de checkpointing y HITL.
+ 3   CrewAI y AutoGen/AG2 priorizan colaboración entre agentes por sobre control determinista del
+     flujo.
+ 4   OpenAI Agents SDK destaca por simplicidad y tracing; Pydantic AI por type-safety;
+     smolagents por minimalismo.
+ 5   La elección final debe ponderar control del flujo, operación en producción y mantenibilidad,
+     no solo facilidad de prototipado.
+
+
+  Para un sistema auditable y con estado, el paradigma de grafo
+               ofrece la mejor base arquitectónica.
+                                                                                                      20 / 20
+

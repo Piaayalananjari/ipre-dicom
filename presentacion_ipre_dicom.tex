@@ -1,0 +1,448 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+
+\definecolor{Navy}{HTML}{102A43}
+\definecolor{Blue}{HTML}{1677A8}
+\definecolor{Cyan}{HTML}{27B3C2}
+\definecolor{Pale}{HTML}{EAF6F8}
+\definecolor{Ink}{HTML}{243B53}
+\definecolor{Muted}{HTML}{627D98}
+\definecolor{Coral}{HTML}{E76F51}
+
+\setbeamercolor{normal text}{fg=Ink,bg=white}
+\setbeamercolor{frametitle}{fg=Navy,bg=white}
+\setbeamercolor{structure}{fg=Blue}
+\setbeamercolor{alerted text}{fg=Coral}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{frametitle}{\vspace{0.35cm}\insertframetitle\par\vspace{0.15cm}\color{Cyan}\rule{\textwidth}{1.2pt}}
+\setbeamertemplate{footline}{\hfill\color{Muted}\scriptsize IPRE-DICOM \hspace{0.4cm} \insertframenumber/\inserttotalframenumber\hspace{0.35cm}\vspace{0.2cm}}
+\setbeamersize{text margin left=0.8cm,text margin right=0.8cm}
+
+\newcommand{\bigpoint}[2]{\textcolor{Blue}{\Large\bfseries #1}\par\smallskip #2}
+
+\title{IPRE-DICOM}
+\subtitle{API experimental para análisis técnico de imágenes médicas}
+\author{Pía Ayala}
+\date{Avance de proyecto · septiembre de 2026}
+
+\begin{document}
+
+\begin{frame}[plain]
+  \vspace{1.2cm}
+  {\color{Cyan}\rule{2.1cm}{3pt}}\\[0.35cm]
+  {\fontsize{30}{34}\selectfont\bfseries\color{Navy} IPRE-DICOM}\\[0.25cm]
+  {\Large API experimental para análisis técnico de imágenes médicas}\\[0.8cm]
+  {\color{Muted}Pía Ayala · Avance de proyecto · septiembre de 2026}\\[1.0cm]
+  \begin{beamercolorbox}[sep=0.35cm,wd=0.78\textwidth]{block body}
+    \color{Ink}Formatos médicos, control técnico, privacidad e inferencia reproducible
+  \end{beamercolorbox}
+\end{frame}
+
+\begin{frame}{Problema y objetivo}
+\begin{columns}[T,onlytextwidth]
+\column{0.47\textwidth}
+\bigpoint{Problema}{Las imágenes provienen de fuentes, formatos y tamaños distintos. Antes de entrenar modelos se necesita un flujo uniforme, trazable y seguro.}
+\vspace{0.55cm}
+\bigpoint{Pregunta}{¿Cómo recibir una imagen, inspeccionarla y ejecutar modelos sin mezclar lectura, privacidad e inferencia?}
+\column{0.47\textwidth}
+\begin{beamercolorbox}[rounded=true,sep=0.45cm]{block body}
+{\bfseries\color{Navy}Objetivo del prototipo}\\[0.25cm]
+Construir una API modular que abra imágenes médicas, calcule indicadores técnicos, audite metadata DICOM y ejecute clasificadores disponibles.\\[0.35cm]
+{\color{Coral}\bfseries Alcance:} investigación y apoyo técnico, sin diagnóstico clínico.
+\end{beamercolorbox}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Flujo de una imagen dentro de la API}
+\centering
+\begin{tikzpicture}[node distance=0.42cm, every node/.style={font=\small},
+box/.style={draw=Blue,rounded corners=3pt,fill=Pale,minimum width=2.15cm,minimum height=1.0cm,align=center},
+arrow/.style={-{Latex[length=2mm]},thick,color=Cyan}]
+\node[box] (upload) {Archivo\\subido};
+\node[box,right=of upload] (reader) {Lector según\\formato};
+\node[box,right=of reader] (gray) {Imagen 2D\\normalizada};
+\node[box,right=of gray] (analysis) {Análisis\\y modelos};
+\node[box,right=of analysis] (json) {JSON e\\interfaz web};
+\draw[arrow] (upload) -- (reader);
+\draw[arrow] (reader) -- (gray);
+\draw[arrow] (gray) -- (analysis);
+\draw[arrow] (analysis) -- (json);
+\end{tikzpicture}
+\vspace{0.8cm}
+\begin{columns}[T,onlytextwidth]
+\column{0.30\textwidth}\bigpoint{1}{FastAPI recibe el archivo mediante \texttt{/predict}.}
+\column{0.30\textwidth}\bigpoint{2}{Cada módulo entrega resultados independientes y verificables.}
+\column{0.30\textwidth}\bigpoint{3}{La interfaz presenta el mismo contrato JSON de la API.}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Capacidades implementadas}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+{\bfseries\color{Navy}Entrada y análisis}
+\begin{itemize}
+  \item DICOM, PNG/JPEG/TIFF, NIfTI y NumPy
+  \item Escala de grises y corte central para volúmenes
+  \item Brillo, contraste, ruido y nitidez
+  \item Límite de carga de 64 MiB
+\end{itemize}
+\vspace{0.35cm}
+{\bfseries\color{Navy}Modelos}
+\begin{itemize}
+  \item DenseNet121 de MONAI
+  \item Checkpoints de ruido y rotación probados localmente
+  \item Frontal/lateral preparado para entrenamiento
+\end{itemize}
+\column{0.48\textwidth}
+{\bfseries\color{Navy}Datos y experimentación}
+\begin{itemize}
+  \item ChestMNIST y PneumoniaMNIST
+  \item Manifiesto para IU Chest X-Ray
+  \item Splits agrupados por paciente o estudio
+  \item Métricas y artefactos en W\&B
+\end{itemize}
+\vspace{0.35cm}
+{\bfseries\color{Navy}Seguridad del flujo}
+\begin{itemize}
+  \item Auditoría de campos DICOM sensibles
+  \item Seudonimización experimental de UIDs
+  \item Informe determinista con LangGraph opcional
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Demostración con cambios controlados}
+\begin{columns}[T,onlytextwidth]
+\column{0.31\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=4.25cm,keepaspectratio]{demo_assets/01_original_medmnist.png}\\[0.15cm]
+{\bfseries Original}\\{\scriptsize Muestra pública de PneumoniaMNIST}
+\column{0.31\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=4.25cm,keepaspectratio]{demo_assets/02_rotada_25_grados.png}\\[0.15cm]
+{\bfseries Rotada}\\{\scriptsize Alteración controlada de 25 grados}
+\column{0.31\textwidth}
+\centering
+\includegraphics[width=\linewidth,height=4.25cm,keepaspectratio]{demo_assets/03_ruidosa.png}\\[0.15cm]
+{\bfseries Ruidosa}\\{\scriptsize Ruido gaussiano reproducible}
+\end{columns}
+\vspace{0.35cm}
+\centering\color{Muted}\small La demo compara indicadores deterministas y predicciones aprendidas sin usar datos clínicos identificables.
+\end{frame}
+
+\begin{frame}{Modelos y etiquetas}
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Tarea} & \textbf{Clase 0} & \textbf{Clase 1} & \textbf{Estado} \\
+\midrule
+Ruido & clean & noise & Checkpoint disponible \\
+Rotación & clean & rotation & Checkpoint disponible \\
+Vista & frontal & lateral & Pipeline listo; falta entrenar \\
+PneumoniaMNIST & normal & pneumonia & Entrenador e inferencia listos \\
+ChestMNIST & 14 hallazgos & multietiqueta & Entrenador e inferencia listos \\
+\bottomrule
+\end{tabular}
+\vspace{0.75cm}
+\begin{beamercolorbox}[rounded=true,sep=0.35cm,wd=0.9\textwidth]{block body}
+La API ejecuta el flujo de extremo a extremo. El rendimiento de cada modelo depende de sus datos y todavía requiere validación externa.
+\end{beamercolorbox}
+\end{frame}
+
+\begin{frame}{Privacidad DICOM}
+\begin{columns}[T,onlytextwidth]
+\column{0.47\textwidth}
+{\bfseries\color{Navy}Auditoría}
+\begin{itemize}
+  \item Detecta nombres de campos sensibles
+  \item Nunca devuelve sus valores en el JSON
+  \item Revisa \texttt{BurnedInAnnotation}
+  \item Solicita revisión OCR para texto en píxeles
+\end{itemize}
+\column{0.47\textwidth}
+{\bfseries\color{Navy}Exportación experimental}
+\begin{itemize}
+  \item Elimina tags privados
+  \item Vacía identificadores directos conocidos
+  \item Remapea UIDs con HMAC
+  \item Conserva PixelData sin modificar
+\end{itemize}
+\end{columns}
+\vspace{0.65cm}
+\begin{beamercolorbox}[rounded=true,sep=0.35cm]{alertblock body}
+{\color{Coral}\bfseries Límite actual:} no hay OCR ni redacción de píxeles. El perfil no reemplaza una validación institucional basada en DICOM PS3.15.
+\end{beamercolorbox}
+\end{frame}
+
+\begin{frame}{Validación y reproducibilidad}
+\begin{columns}[T,onlytextwidth]
+\column{0.43\textwidth}
+{\fontsize{30}{32}\selectfont\color{Blue}\bfseries 26}\\[-0.05cm]
+{\large pruebas automatizadas aprobadas}\\[0.65cm]
+{\fontsize{24}{27}\selectfont\color{Cyan}\bfseries 4}\\[-0.05cm]
+{\large familias de formatos principales}
+\column{0.52\textwidth}
+{\bfseries\color{Navy}La suite comprueba}
+\begin{itemize}
+  \item lectura y normalización de imágenes;
+  \item privacidad y seudonimización DICOM;
+  \item servicios y métricas MedMNIST;
+  \item separación por fuente para evitar fuga;
+  \item endpoints HTTP y etiquetas frontal/lateral.
+\end{itemize}
+\vspace{0.3cm}
+W\&B registra configuración, pérdida, ROC-AUC, F1 y el mejor checkpoint.
+\end{columns}
+\end{frame}
+
+\begin{frame}{Estado actual del proyecto}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+{\bfseries\color{Blue}Validado en entorno local}
+\begin{itemize}
+  \item API y visor ejecutables en el Mac
+  \item Soporte multiformato
+  \item Ruido y rotación de extremo a extremo
+  \item MedMNIST, W\&B y LangGraph
+  \item Auditoría DICOM experimental
+  \item Manual, demo y pruebas
+\end{itemize}
+\column{0.48\textwidth}
+{\bfseries\color{Coral}Trabajo pendiente}
+\begin{itemize}
+  \item Entrenar vista con IU Chest X-Ray
+  \item Validar con datos reales separados por paciente
+  \item Calibrar umbrales y probabilidades
+  \item Añadir OCR y redacción de píxeles
+  \item Incorporar autenticación antes de publicar
+  \item Evaluar embeddings y búsqueda por similitud
+\end{itemize}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Próximo experimento}
+\begin{columns}[T,onlytextwidth]
+\column{0.45\textwidth}
+\bigpoint{Dataset}{IU Chest X-Ray para clasificar vista frontal o lateral.}
+\vspace{0.45cm}
+\bigpoint{Diseño}{Separación por \texttt{source\_id} para mantener un estudio completo en una sola partición.}
+\column{0.49\textwidth}
+\bigpoint{Evaluación}{ROC-AUC, F1, balanced accuracy y matriz de confusión.}
+\vspace{0.45cm}
+\bigpoint{Entrega}{\texttt{best\_view.pt} integrado automáticamente en \texttt{/predict}.}
+\end{columns}
+\vspace{0.75cm}
+\centering
+{\large\color{Navy}\bfseries Objetivo inmediato: validar el flujo con datos reales y revisión humana de errores.}
+\end{frame}
+
+\begin{frame}{Arquitectura por capas}
+\begin{columns}[T,onlytextwidth]
+\column{0.23\textwidth}
+\bigpoint{Presentación}{Visor web y documentación Swagger.}
+\column{0.23\textwidth}
+\bigpoint{Aplicación}{Endpoints FastAPI y validación de carga.}
+\column{0.23\textwidth}
+\bigpoint{Dominio}{Formatos, calidad, privacidad y flujo agente.}
+\column{0.23\textwidth}
+\bigpoint{Modelos y datos}{MONAI, checkpoints, MedMNIST e IU.}
+\end{columns}
+\vspace{0.85cm}
+\begin{beamercolorbox}[rounded=true,sep=0.4cm]{block body}
+La separación permite reemplazar un modelo o agregar un formato sin reescribir toda la API.
+\end{beamercolorbox}
+\end{frame}
+
+\begin{frame}{Contratos principales de la API}
+\centering
+\begin{tabular}{@{}p{2.7cm}p{3.7cm}p{5.0cm}@{}}
+\toprule
+\textbf{Endpoint} & \textbf{Entrada} & \textbf{Salida} \\
+\midrule
+\texttt{GET /health} & Sin archivo & Dispositivo, modelos y datasets \\
+\texttt{GET /formats} & Sin archivo & Formatos y límite de carga \\
+\texttt{POST /predict} & DICOM, raster, NIfTI o NPY & Métricas, privacidad, modelos e informe \\
+\texttt{POST /anonymize/dicom} & DICOM y secreto del servidor & DICOM seudonimizado \\
+\texttt{/datasets/medmnist/...} & Dataset, split, tamaño e índice & Catálogo, descarga o muestra PNG \\
+\texttt{/predict/medmnist/...} & Raster y checkpoint & Probabilidad por etiqueta \\
+\bottomrule
+\end{tabular}
+\vspace{0.55cm}
+{\color{Muted}\small FastAPI publica además OpenAPI, Swagger y validación automática de parámetros.}
+\end{frame}
+
+\begin{frame}{Preprocesamiento según formato}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+{\bfseries\color{Navy}DICOM}
+\begin{itemize}
+  \item Decodificación de \texttt{PixelData}
+  \item Aplicación de pendiente e intercepto
+  \item Ventana DICOM o rango observado
+  \item Inversión para \texttt{MONOCHROME1}
+  \item Primer frame en estudios multiframe
+\end{itemize}
+\column{0.48\textwidth}
+{\bfseries\color{Navy}Otros formatos}
+\begin{itemize}
+  \item Raster convertido a escala de grises
+  \item NIfTI y NPY reducidos al corte central
+  \item Percentiles 1 y 99 para visualización
+  \item Redimensión a 224×224 para modelos generales
+  \item Normalización de intensidad con MONAI
+\end{itemize}
+\end{columns}
+\vspace{0.45cm}
+\centering\color{Coral}\small Abrir un formato no implica que un clasificador sea válido para esa modalidad.
+\end{frame}
+
+\begin{frame}{Modelado con MONAI DenseNet121}
+\begin{columns}[T,onlytextwidth]
+\column{0.42\textwidth}
+\bigpoint{Entrada}{Imagen 2D, un canal, intensidad normalizada.}
+\vspace{0.45cm}
+\bigpoint{Red}{DenseNet121 reutiliza características mediante conexiones densas.}
+\vspace{0.45cm}
+\bigpoint{Salida}{Dos logits para ruido, rotación o vista.}
+\column{0.52\textwidth}
+{\bfseries\color{Navy}Inferencia}
+\begin{enumerate}
+  \item El servidor carga \texttt{best\_<task>.pt} al iniciar.
+  \item La transformación produce un tensor por imagen.
+  \item \texttt{softmax} convierte logits en probabilidades.
+  \item La API asigna nombres de clase y devuelve JSON.
+\end{enumerate}
+\vspace{0.35cm}
+{\color{Muted}\small MedMNIST usa una salida por etiqueta y \texttt{sigmoid}.}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Pipeline de entrenamiento}
+\centering
+\begin{tikzpicture}[node distance=0.42cm, every node/.style={font=\small},
+box/.style={draw=Blue,rounded corners=3pt,fill=Pale,minimum width=2.05cm,minimum height=0.95cm,align=center},
+arrow/.style={-{Latex[length=2mm]},thick,color=Cyan}]
+\node[box] (csv) {CSV con rutas,\\etiquetas y grupo};
+\node[box,right=of csv] (split) {Split por\\\texttt{source\_id}};
+\node[box,right=of split] (train) {DenseNet121 +\\CrossEntropy};
+\node[box,right=of train] (metrics) {Accuracy, F1,\\balanced acc., AUC};
+\node[box,right=of metrics] (save) {Mejor\\checkpoint};
+\draw[arrow] (csv)--(split); \draw[arrow] (split)--(train); \draw[arrow] (train)--(metrics); \draw[arrow] (metrics)--(save);
+\end{tikzpicture}
+\vspace{0.75cm}
+\begin{columns}[T,onlytextwidth]
+\column{0.47\textwidth}
+{\bfseries\color{Navy}Prevención de fuga}\\
+Una imagen original y sus variantes permanecen en una sola partición.
+\column{0.47\textwidth}
+{\bfseries\color{Navy}Selección del modelo}\\
+Se conserva el checkpoint con mayor ROC-AUC de validación.
+\end{columns}
+\end{frame}
+
+\begin{frame}{Datasets y función dentro del proyecto}
+\centering
+\begin{tabular}{@{}p{2.8cm}p{3.1cm}p{3.2cm}p{3.0cm}@{}}
+\toprule
+\textbf{Fuente} & \textbf{Tipo} & \textbf{Uso} & \textbf{Limitación} \\
+\midrule
+PneumoniaMNIST & Binario pediátrico & Probar entrenamiento e inferencia & Imagen normalizada, sin DICOM \\
+ChestMNIST & 14 etiquetas & Clasificación multietiqueta & Resolución reducida \\
+IU Chest X-Ray & Frontal y lateral & Entrenar \texttt{view} & Requiere descarga y manifiesto \\
+CheXpert & Radiografías y etiquetas & Futuro escalamiento & Gran tamaño y acceso controlado \\
+Sintéticos & Rotación y ruido & Validar el pipeline & No representan toda la variabilidad real \\
+\bottomrule
+\end{tabular}
+\end{frame}
+
+\begin{frame}{Evaluación y seguimiento con W\&B}
+\begin{columns}[T,onlytextwidth]
+\column{0.46\textwidth}
+{\bfseries\color{Navy}Durante el entrenamiento}
+\begin{itemize}
+  \item Pérdida por época
+  \item Learning rate
+  \item Accuracy y balanced accuracy
+  \item F1 y ROC-AUC
+\end{itemize}
+\column{0.48\textwidth}
+{\bfseries\color{Navy}Trazabilidad}
+\begin{itemize}
+  \item Hiperparámetros y semilla
+  \item Arquitectura y dispositivo
+  \item Método de separación
+  \item Mejor checkpoint como artefacto
+\end{itemize}
+\end{columns}
+\vspace{0.65cm}
+\begin{beamercolorbox}[rounded=true,sep=0.35cm]{block body}
+W\&B puede trabajar online u offline. El proyecto no sube automáticamente imágenes clínicas ni metadata DICOM.
+\end{beamercolorbox}
+\end{frame}
+
+\begin{frame}{Flujo agente acotado}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+{\bfseries\color{Navy}Entradas permitidas}
+\begin{itemize}
+  \item Probabilidades ya calculadas
+  \item Conteo de campos sensibles
+  \item Necesidad de revisión de píxeles
+\end{itemize}
+\column{0.48\textwidth}
+{\bfseries\color{Navy}Salidas}
+\begin{itemize}
+  \item Estado \texttt{ok} o \texttt{review}
+  \item Hallazgos estructurados
+  \item Acciones recomendadas
+  \item Aviso de uso no diagnóstico
+\end{itemize}
+\end{columns}
+\vspace{0.55cm}
+\centering
+{\large\color{Blue}\bfseries LangGraph organiza herramientas; no reemplaza los modelos ni toma decisiones clínicas.}
+\end{frame}
+
+\begin{frame}{Plan de despliegue en Calfuco}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+{\bfseries\color{Navy}Recursos observados}
+\begin{itemize}
+  \item Tres GPU, incluida una RTX 3090
+  \item \texttt{/mnt/data}: datasets originales
+  \item \texttt{/mnt/workspace}: datos activos
+  \item Python del sistema: 3.6.9
+\end{itemize}
+\column{0.48\textwidth}
+{\bfseries\color{Navy}Pasos todavía pendientes}
+\begin{itemize}
+  \item Obtener permisos personales
+  \item Crear un entorno Python moderno
+  \item Copiar el proyecto e instalar dependencias
+  \item Ejecutar pruebas e iniciar la API
+  \item Acceder mediante túnel SSH
+\end{itemize}
+\end{columns}
+\vspace{0.5cm}
+\begin{beamercolorbox}[rounded=true,sep=0.35cm]{alertblock body}
+{\color{Coral}\bfseries Estado actual: no desplegado.} Solo se inspeccionó el servidor y se documentó el procedimiento.
+\end{beamercolorbox}
+\end{frame}
+
+\begin{frame}[plain]
+\vspace{1.25cm}
+{\color{Cyan}\rule{2.1cm}{3pt}}\\[0.35cm]
+{\fontsize{26}{30}\selectfont\bfseries\color{Navy}Un prototipo local funcional, con modelos aún en etapa de validación}\\[0.65cm]
+{\large La infraestructura ya separa formatos, calidad técnica, privacidad, inferencia y experimentación.}\\[1.0cm]
+{\color{Blue}\Large\bfseries Demostración en vivo}\\[0.25cm]
+{\color{Muted}\texttt{/health} · visor web · imagen original · rotación · ruido · Swagger}\\[1cm]
+{\large Preguntas}
+\end{frame}
+
+\end{document}

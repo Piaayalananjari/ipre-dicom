@@ -1,0 +1,21 @@
+{
+  "dataset": "pneumoniamnist",
+  "source_size": 28,
+  "input_size": 64,
+  "epochs_completed": 1,
+  "train_samples": 4708,
+  "validation_samples": 524,
+  "test_samples": 624,
+  "epoch_1": {
+    "train_loss": 0.2315,
+    "validation_roc_auc": 0.9912025135675521,
+    "validation_f1": 0.9398
+  },
+  "test": {
+    "roc_auc": 0.9477865439403902,
+    "f1": 0.8336804182593032,
+    "accuracy": 0.8541666666666666
+  },
+  "checkpoint": "models/medmnist_pneumoniamnist_28.pt",
+  "note": "Corrida inicial local de una época. No constituye validación clínica."
+}

@@ -35,7 +35,7 @@
   header h1 { font-size: 18px; margin: 0; }
   header .sub { color: var(--muted); font-size: 13px; }
   main {
-    max-width: 960px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 24px;
     display: grid;
@@ -117,6 +117,17 @@
   }
   .bar > div { height: 100%; background: var(--accent); border-radius: 3px; transition: width .3s; }
   .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 0; }
+  .wide { grid-column: 1 / -1; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  .controls label { color: var(--muted); font-size: 12px; display: grid; gap: 5px; }
+  select, input[type="number"] {
+    color: var(--text); background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px;
+  }
+  .controls button { width: auto; margin: 0; }
+  #dataset-preview { image-rendering: auto; max-width: 224px; margin-top: 14px; border-radius: 8px; }
+  .section-title { margin-top: 18px; color: var(--muted); font-size: 12px; text-transform: uppercase; }
+  .note { color: var(--muted); font-size: 12px; line-height: 1.45; }
   #error { color: var(--bad); font-size: 13px; margin-top: 10px; min-height: 18px; }
   .verdict {
     text-align: center;
@@ -155,7 +166,7 @@
 
     <h2>Subir imagen</h2>
     <div id="drop">Arrastra una imagen aquí<br>o haz clic para seleccionar</div>
-    <input type="file" id="file" accept="image/*,.dcm" hidden>
+    <input type="file" id="file" accept="image/*,.dcm,.dicom,.nii,.nii.gz,.npy" hidden>
     <img id="preview" alt="">
     <button id="analyze" disabled>Analizar</button>
     <div id="error"></div>
@@ -164,6 +175,27 @@
   <section class="panel">
     <h2>Resultados</h2>
     <div id="results"><div class="empty">Sube una imagen para ver las predicciones</div></div>
+  </section>
+
+  <section class="panel wide">
+    <h2>Explorador MedMNIST</h2>
+    <div class="controls">
+      <label>Dataset
+        <select id="dataset-name"><option value="chestmnist">ChestMNIST</option><option value="pneumoniamnist">PneumoniaMNIST</option></select>
+      </label>
+      <label>Split
+        <select id="dataset-split"><option>train</option><option>val</option><option>test</option></select>
+      </label>
+      <label>Resolución
+        <select id="dataset-size"><option>28</option><option>64</option><option>128</option><option>224</option></select>
+      </label>
+      <label>Índice
+        <input id="dataset-index" type="number" value="0" min="0">
+      </label>
+      <button id="dataset-load">Ver muestra</button>
+    </div>
+    <div id="dataset-status" class="note">El dataset debe descargarse explícitamente mediante la API antes de visualizarlo.</div>
+    <img id="dataset-preview" hidden alt="Muestra MedMNIST">
   </section>
 </main>
 
@@ -175,6 +207,9 @@ const analyzeBtn = document.getElementById('analyze');
 const errorBox = document.getElementById('error');
 const resultsBox = document.getElementById('results');
 const modelsBox = document.getElementById('models');
+const datasetLoad = document.getElementById('dataset-load');
+const datasetPreview = document.getElementById('dataset-preview');
+const datasetStatus = document.getElementById('dataset-status');
 
 let file = null;
 
@@ -226,32 +261,46 @@ analyzeBtn.addEventListener('click', async () => {
 
 function render(data) {
   const entries = Object.entries(data.results || {});
-  if (!entries.length) {
-    resultsBox.innerHTML = '<div class="empty">No hay modelos cargados. Entrena uno primero.</div>';
-    return;
-  }
+  const modelNotice = entries.length ? '' : '<div class="empty">No hay checkpoints cargados; se muestran los indicadores deterministas.</div>';
   const rows = entries.map(([task, r]) => {
-    const clean = r.clean ?? 0, bad = r[task] ?? 0;
-    const pct = Math.round(bad * 100);
+    const ranked = Object.entries(r).sort((a, b) => b[1] - a[1]);
+    const [label, probability] = ranked[0] || ['sin resultado', 0];
+    const pct = Math.round(probability * 100);
     return `
       <div class="result">
         <span class="label">${task}</span>
-        <span class="prob">${pct}% ${task}</span>
+        <span class="prob">${pct}% ${label}</span>
       </div>
       <div class="bar"><div style="width:${pct}%"></div></div>`;
   }).join('');
 
-  const issues = entries.filter(([task, r]) => (r[task] ?? 0) > 0.5).map(([t]) => t);
-  let verdict;
-  if (!issues.length) verdict = '<div class="verdict ok">Imagen limpia ✓</div>';
-  else if (issues.length === entries.length) verdict = `<div class="verdict bad">Problemas: ${issues.join(', ')}</div>`;
-  else verdict = `<div class="verdict warn">Sospecha: ${issues.join(', ')}</div>`;
+  const qualityEntries = entries.filter(([task]) => task !== 'view');
+  const issues = qualityEntries.filter(([task, r]) => (r[task] ?? 0) > 0.5).map(([t]) => t);
+  let verdict = '';
+  if (qualityEntries.length) {
+    if (!issues.length) verdict = '<div class="verdict ok">Sin alertas de los modelos cargados ✓</div>';
+    else if (issues.length === qualityEntries.length) verdict = `<div class="verdict bad">Problemas: ${issues.join(', ')}</div>`;
+    else verdict = `<div class="verdict warn">Sospecha: ${issues.join(', ')}</div>`;
+  }
 
   const meta = data.dicom
     ? `<div class="result" style="margin-top:10px"><span class="label">DICOM</span><span class="prob" style="font-size:12px">${metaToString(data.dicom)}</span></div>`
     : '';
 
-  resultsBox.innerHTML = rows + verdict + meta;
+  const q = data.quality_metrics || {};
+  const quality = `<div class="section-title">Indicadores técnicos</div>
+    <div class="note">${q.width || '?'}×${q.height || '?'} · brillo ${q.brightness_mean ?? '?'} · contraste ${q.contrast_std ?? '?'} · ruido ${q.noise_estimate ?? '?'}</div>`;
+  const privacy = data.privacy || {};
+  const privacyClass = privacy.anonymous ? 'ok' : 'warn';
+  const privacyText = privacy.anonymous
+    ? 'Sin identificadores DICOM detectados'
+    : `Revisión de privacidad requerida · ${privacy.metadata_identifier_count || 0} campos identificadores`;
+  const privacyRow = `<div class="verdict ${privacyClass}">${privacyText}</div><div class="note">${privacy.warning || ''}</div>`;
+  const report = data.agent_report || {};
+  const actions = (report.recommended_actions || []).map(a => `<li>${a}</li>`).join('');
+  const agent = actions ? `<div class="section-title">Informe del flujo agente</div><ul class="note">${actions}</ul>` : '';
+
+  resultsBox.innerHTML = modelNotice + rows + verdict + meta + quality + privacyRow + agent;
 }
 
 function metaToString(m) {
@@ -272,6 +321,33 @@ async function refreshModels() {
 }
 
 refreshModels();
+
+datasetLoad.addEventListener('click', async () => {
+  const flag = document.getElementById('dataset-name').value;
+  const split = document.getElementById('dataset-split').value;
+  const size = document.getElementById('dataset-size').value;
+  const index = document.getElementById('dataset-index').value;
+  datasetLoad.disabled = true;
+  datasetStatus.textContent = 'Cargando muestra…';
+  try {
+    const res = await fetch(`/datasets/medmnist/${flag}/sample?split=${split}&size=${size}&index=${index}`);
+    if (!res.ok) {
+      const body = await res.json();
+      throw new Error(body.detail || 'No se pudo cargar la muestra');
+    }
+    const blob = await res.blob();
+    datasetPreview.src = URL.createObjectURL(blob);
+    datasetPreview.hidden = false;
+    const labels = res.headers.get('X-MedMNIST-Labels');
+    const count = res.headers.get('X-MedMNIST-Samples');
+    datasetStatus.textContent = `Muestra ${index} de ${count} · etiquetas ${labels}`;
+  } catch (err) {
+    datasetPreview.hidden = true;
+    datasetStatus.textContent = `${err.message}. Descarga primero POST /datasets/medmnist/${flag}/download?size=${size}`;
+  } finally {
+    datasetLoad.disabled = false;
+  }
+});
 </script>
 </body>
 </html>

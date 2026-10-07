@@ -13,9 +13,9 @@ def apply_rotation(img: Image.Image, angle: float) -> Image.Image:
     return img.rotate(angle, resample=Image.Resampling.BICUBIC, expand=False, fillcolor=0)
 
 
-def apply_noise(img: Image.Image, sigma: float, blur: bool) -> Image.Image:
+def apply_noise(img: Image.Image, rng: np.random.Generator, sigma: float, blur: bool) -> Image.Image:
     arr = np.asarray(img).astype(np.float32)
-    gauss = np.random.default_rng(RANDOM_SEED).normal(0, sigma, arr.shape)
+    gauss = rng.normal(0, sigma, arr.shape)
     arr = np.clip(arr + gauss, 0, 255).astype(np.uint8)
     noisy = Image.fromarray(arr)
     if blur:
@@ -57,25 +57,26 @@ def main():
         img = Image.open(f).convert("L").resize((args.size, args.size))
         clean_path = clean_dir / f.name
         img.save(clean_path)
-        rows.append({"path": clean_path, "rotation_label": 0, "noise_label": 0})
+        rows.append({"path": clean_path, "source_id": f.stem, "rotation_label": 0, "noise_label": 0})
 
         if i < args.n_rotated:
             angle = random.choice(gross_angles) if random.random() < 0.6 else random.uniform(*tilt_range)
             rot = apply_rotation(img, angle)
             rot_path = rotated_dir / f"{f.stem}_rot{i}.png"
             rot.save(rot_path)
-            rows.append({"path": rot_path, "rotation_label": 1, "noise_label": 0})
+            rows.append({"path": rot_path, "source_id": f.stem, "rotation_label": 1, "noise_label": 0})
 
         if i < args.n_noisy:
             sigma = random.uniform(5.0, 40.0)
-            noisy = apply_noise(img, sigma, blur=random.random() < 0.4)
+            rng = np.random.default_rng(RANDOM_SEED * 1000 + i)
+            noisy = apply_noise(img, rng, sigma, blur=random.random() < 0.4)
             noisy_path = noisy_dir / f"{f.stem}_noisy{i}.png"
             noisy.save(noisy_path)
-            rows.append({"path": noisy_path, "rotation_label": 0, "noise_label": 1})
+            rows.append({"path": noisy_path, "source_id": f.stem, "rotation_label": 0, "noise_label": 1})
 
     csv_path = out_dir / "labels.csv"
     with open(csv_path, "w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["path", "rotation_label", "noise_label"])
+        writer = csv.DictWriter(fh, fieldnames=["path", "source_id", "rotation_label", "noise_label"])
         writer.writeheader()
         writer.writerows(rows)
 

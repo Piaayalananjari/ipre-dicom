@@ -8,3 +8,5 @@ pydicom
 fastapi
 uvicorn[standard]
 python-multipart
+medmnist>=3.0
+nibabel>=5.2,<6

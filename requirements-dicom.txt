@@ -1,0 +1,5 @@
+# Codecs opcionales para PixelData DICOM comprimido (JPEG/JPEG-LS/JPEG 2000).
+-r requirements.txt
+pylibjpeg>=2,<3
+pylibjpeg-libjpeg>=2,<3
+pylibjpeg-openjpeg>=2,<3

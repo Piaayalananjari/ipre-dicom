@@ -1,0 +1,5 @@
+# Herramientas opcionales para entrenamiento y exploración en Calfuco.
+-r requirements.txt
+wandb>=0.18,<1
+jupyterlab>=4,<5
+matplotlib>=3.8,<4

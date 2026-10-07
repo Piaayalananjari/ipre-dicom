@@ -1,0 +1,579 @@
+IPRE-DICOM
+API experimental para análisis técnico de imágenes médicas
+Pía Ayala · Avance de proyecto · septiembre de 2026
+
+Formatos médicos, control técnico, privacidad e inferencia
+reproducible
+
+IPRE-DICOM 1/20
+
+Problema y objetivo
+PROBLEMA
+Las imágenes provienen de fuentes,
+formatos y tamaños distintos. Antes de
+entrenar se necesita un flujo uniforme,
+trazable y seguro.
+
+PREGUNTA
+¿Cómo recibir una imagen, inspeccionarla y
+ejecutar modelos sin mezclar lectura,
+privacidad e inferencia?
+
+OBJETIVO DEL PROTOTIPO
+
+Construir una API modular que abra
+imágenes médicas, calcule
+indicadores técnicos, audite
+metadata DICOM y ejecute
+clasificadores disponibles.
+Alcance: investigación y apoyo
+técnico, sin diagnóstico clínico.
+
+IPRE-DICOM 2/20
+
+Flujo de una imagen dentro de la API
+
+Archivo
+
+Lector según
+
+Imagen 2D
+
+Análisis
+
+JSON e
+
+subido
+
+formato
+
+normalizada
+
+y modelos
+
+interfaz web
+
+1
+
+2
+
+3
+
+FastAPI recibe el archivo
+mediante /predict.
+
+Cada módulo entrega resultados
+independientes.
+
+La interfaz presenta el mismo
+contrato JSON.
+
+IPRE-DICOM 3/20
+
+Capacidades implementadas
+ENTRADA Y ANÁLISIS
+
+DATOS Y EXPERIMENTACIÓN
+
+DICOM, raster, NIfTI y NumPy
+
+ChestMNIST y PneumoniaMNIST
+
+Brillo, contraste, ruido y nitidez
+
+Manifiesto para IU Chest X-Ray
+
+Corte central para volúmenes
+
+Splits por paciente o estudio
+Métricas y artefactos en W&B
+
+MODELOS
+DenseNet121 de MONAI
+Ruido y rotación probados localmente
+Frontal/lateral preparado
+
+SEGURIDAD
+Auditoría DICOM
+Seudonimización experimental
+LangGraph determinista opcional
+
+IPRE-DICOM 4/20
+
+Demostración con cambios controlados
+
+Original
+
+Rotada
+
+Ruidosa
+
+Muestra pública de PneumoniaMNIST
+
+Alteración controlada de 25 grados
+
+Ruido gaussiano reproducible
+
+La demo compara indicadores deterministas y predicciones aprendidas sin usar datos identificables.
+IPRE-DICOM 5/20
+
+Modelos y etiquetas
+Tarea
+
+Clase 0
+
+Clase 1
+
+Estado
+
+Ruido
+
+clean
+
+noise
+
+Checkpoint disponible
+
+Rotación
+
+clean
+
+rotation
+
+Checkpoint disponible
+
+Vista
+
+frontal
+
+lateral
+
+Falta entrenar
+
+PneumoniaMNIST
+
+normal
+
+pneumonia
+
+Pipeline listo
+
+ChestMNIST
+
+14 hallazgos
+
+multietiqueta
+
+Pipeline listo
+
+La API funciona de extremo a extremo. Cada modelo aún requiere validación externa.
+
+IPRE-DICOM 6/20
+
+Privacidad DICOM
+AUDITORÍA
+
+EXPORTACIÓN EXPERIMENTAL
+
+Detecta campos sensibles
+
+Elimina tags privados
+
+No devuelve sus valores
+
+Vacía identificadores conocidos
+
+Revisa BurnedInAnnotation
+
+Remapea UIDs con HMAC
+
+Solicita revisión OCR
+
+Conserva PixelData
+
+Límite actual: no hay OCR ni redacción de píxeles. Se requiere validación
+institucional.
+
+IPRE-DICOM 7/20
+
+Validación y reproducibilidad
+
+26
+pruebas automatizadas aprobadas
+
+LA SUITE COMPRUEBA
+Lectura y normalización
+Privacidad DICOM
+Servicios MedMNIST
+Separación por fuente
+
+4
+
+Endpoints HTTP
+
+familias de formatos principales
+W&B registra configuración, pérdida,
+ROC-AUC, F1 y el mejor checkpoint.
+
+IPRE-DICOM 8/20
+
+Estado actual del proyecto
+VALIDADO EN ENTORNO LOCAL
+
+TRABAJO PENDIENTE
+
+API y visor ejecutables en el Mac
+
+Entrenar vista con IU
+
+Soporte multiformato
+
+Validar por paciente
+
+Ruido y rotación integrados
+
+Calibrar probabilidades
+
+MedMNIST, W&B y LangGraph
+
+Añadir OCR
+
+Auditoría DICOM
+
+Incorporar autenticación
+
+Manual, demo y pruebas
+
+Evaluar búsqueda por similitud
+
+IPRE-DICOM 9/20
+
+Próximo experimento
+DATASET
+
+EVALUACIÓN
+
+IU Chest X-Ray para clasificar vista frontal
+o lateral.
+
+ROC-AUC, F1, balanced accuracy y
+matriz de confusión.
+
+DISEÑO
+
+ENTREGA
+
+Separación por source_id para mantener
+cada estudio en una sola partición.
+
+best_view.pt integrado automáticamente
+en /predict.
+
+Objetivo inmediato: validar el flujo con datos reales y revisión humana de
+errores.
+
+IPRE-DICOM 10/20
+
+Arquitectura por capas
+
+PRESENTACIÓN
+
+APLICACIÓN
+
+DOMINIO
+
+MODELOS Y DATOS
+
+Visor web y
+documentación
+Swagger
+
+Endpoints FastAPI y
+validación de carga
+
+Formatos, calidad,
+privacidad y flujo
+agente
+
+MONAI,
+checkpoints,
+MedMNIST e IU
+
+La separación permite reemplazar un modelo o agregar un formato sin reescribir
+toda la API.
+
+IPRE-DICOM 11/20
+
+Contratos principales de la API
+Endpoint
+
+Entrada
+
+Salida
+
+GET /health
+
+Sin archivo
+
+Dispositivo, modelos y datasets
+
+GET /formats
+
+Sin archivo
+
+Formatos y límite de carga
+
+POST /predict
+
+DICOM, raster, NIfTI o NPY
+
+Métricas, privacidad, modelos e informe
+
+POST /anonymize/dicom
+
+DICOM
+
+DICOM seudonimizado
+
+/datasets/medmnist/...
+
+Dataset, split, tamaño e índice
+
+Catálogo, descarga o muestra
+
+/predict/medmnist/...
+
+Raster y checkpoint
+
+Probabilidad por etiqueta
+
+FastAPI publica OpenAPI, Swagger y validación automática de parámetros.
+
+IPRE-DICOM 12/20
+
+Preprocesamiento según formato
+DICOM
+
+OTROS FORMATOS
+
+Decodificación de PixelData
+
+Raster en escala de grises
+
+Pendiente e intercepto
+
+Corte central para NIfTI y NPY
+
+Ventana o rango observado
+
+Percentiles 1 y 99
+
+Inversión MONOCHROME1
+
+Redimensión a 224 x 224
+
+Primer frame multiframe
+
+Normalización MONAI
+
+Abrir un formato no implica que un clasificador sea válido para esa modalidad.
+
+IPRE-DICOM 13/20
+
+Modelado con MONAI DenseNet121
+ENTRADA
+Imagen 2D, un canal, intensidad normalizada.
+
+INFERENCIA
+Carga best_<task>.pt al iniciar
+Transforma una imagen en tensor
+Softmax produce probabilidades
+
+RED
+
+Asigna nombres y devuelve JSON
+
+DenseNet121 reutiliza características
+mediante conexiones densas.
+
+SALIDA
+
+MedMNIST usa una salida por etiqueta y sigmoid.
+
+Dos logits para ruido, rotación o vista.
+
+IPRE-DICOM 14/20
+
+Pipeline de entrenamiento
+
+CSV, etiquetas
+
+Split por
+
+DenseNet121 y
+
+Métricas de
+
+Mejor
+
+y grupo
+
+source_id
+
+CrossEntropy
+
+validación
+
+checkpoint
+
+PREVENCIÓN DE FUGA
+
+SELECCIÓN
+
+La imagen original y sus variantes
+permanecen en una sola partición.
+
+Se conserva el checkpoint con mayor
+ROC-AUC de validación.
+
+IPRE-DICOM 15/20
+
+Datasets y función dentro del proyecto
+Fuente
+
+Tipo
+
+Uso
+
+Limitación
+
+PneumoniaMNIST
+
+Binario
+
+Probar pipeline
+
+Sin DICOM
+
+ChestMNIST
+
+14 etiquetas
+
+Multietiqueta
+
+Resolución reducida
+
+IU Chest X-Ray
+
+Frontal/lateral
+
+Entrenar view
+
+Falta descargar
+
+CheXpert
+
+Radiografías
+
+Escalamiento
+
+Gran tamaño
+
+Sintéticos
+
+Ruido/rotación
+
+Validar flujo
+
+Variabilidad limitada
+
+IPRE-DICOM 16/20
+
+Evaluación y seguimiento con W&B
+DURANTE EL ENTRENAMIENTO
+
+TRAZABILIDAD
+
+Pérdida por época
+
+Hiperparámetros y semilla
+
+Learning rate
+
+Arquitectura y dispositivo
+
+Accuracy y balanced accuracy
+
+Método de separación
+
+F1 y ROC-AUC
+
+Mejor checkpoint como artefacto
+
+W&B opera online u offline. El proyecto no sube automáticamente imágenes clínicas ni
+metadata DICOM.
+
+IPRE-DICOM 17/20
+
+Flujo agente acotado
+ENTRADAS PERMITIDAS
+
+SALIDAS
+
+Probabilidades calculadas
+
+Estado ok o review
+
+Conteo de campos sensibles
+
+Hallazgos estructurados
+
+Necesidad de revisar píxeles
+
+Acciones recomendadas
+Aviso de uso no diagnóstico
+
+LangGraph organiza herramientas. No reemplaza los modelos ni toma decisiones
+clínicas.
+
+IPRE-DICOM 18/20
+
+Plan de despliegue en Calfuco
+RECURSOS OBSERVADOS
+
+PASOS TODAVÍA PENDIENTES
+
+Tres GPU, incluida una RTX 3090
+
+Obtener permisos personales
+
+/mnt/data para originales
+
+Crear entorno Python moderno
+
+/mnt/workspace para datos activos
+
+Copiar proyecto e instalar
+
+Python del sistema 3.6.9
+
+Ejecutar pruebas
+Iniciar API y túnel SSH
+
+Estado actual: no desplegado. Solo se inspeccionó el servidor y se documentó el
+procedimiento.
+
+IPRE-DICOM 19/20
+
+Un prototipo local funcional, con modelos aún en
+etapa de validación
+La infraestructura ya separa formatos, calidad técnica, privacidad, inferencia y
+experimentación.
+
+Demostración en vivo
+/health · visor web · original · rotación · ruido · Swagger
+
+Preguntas
+IPRE-DICOM 20/20
+
+
